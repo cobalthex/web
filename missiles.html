@@ -1,0 +1,432 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <title>Missileers</title>
+    <style>
+        html,body {
+            background: #223;
+            color: #dde;
+            font-family: sans-serif;
+            text-align: center;
+        }
+        main {
+            margin: auto;
+            padding: 20;
+            overflow: hidden;
+        }
+        canvas {
+            cursor: default;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        #debug {
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <canvas id='c' width='600' height='600'></canvas>
+        <div id='info'></div>
+        <div id='debug'></div>
+    </main>
+</body>
+<script>
+    Vec2 = function(X, Y) {
+        this.x = X;
+        this.y = isNaN(Y) ? X : Y;
+    };
+    Vec2.prototype = {
+        toString: function() {
+            return `{x: ${this.x}, y: ${this.y}}`;
+        },
+
+        Equals: function(Vec) {
+            return (this.x == Vec.x) && (this.y == Vec.y);
+        },
+        Within: function(Vec, Epsilon) {
+            Epsilon = isNaN(Epsilon) ? 0.1 : Epsilon;
+            return (Math.abs(this.x - Vec.x) <= Epsilon && Math.abs(this.y - Vec.y) <= Epsilon);
+        },
+        Clone: function() {
+            return new Vec2(this.x, this.y);
+        },
+        Length: function() {
+            return Math.sqrt((this.x * this.x) + (this.y * this.y));
+        },
+        LengthSq: function() {
+            return (this.x * this.x) + (this.y * this.y);
+        },
+        Negate: function() {
+            this.x = -this.x;
+            this.y = -this.y;
+            return this;
+        },
+        Negated: function() {
+            return new Vec2(-this.x, -this.y);
+        },
+        Add: function(Magnitude) {
+            if (!isNaN(Magnitude))
+                Magnitude = new Vec2(Magnitude);
+
+            this.x += Magnitude.x;
+            this.y += Magnitude.y;
+            return this;
+        },
+        Subtract: function(Magnitude) {
+            if (!isNaN(Magnitude))
+                Magnitude = new Vec2(Magnitude);
+
+            this.x -= Magnitude.x;
+            this.y -= Magnitude.y;
+            return this;
+        },
+        Multiply: function(Magnitude) {
+            if (!isNaN(Magnitude))
+                Magnitude = new Vec2(Magnitude);
+            this.x *= Magnitude.x;
+            this.y *= Magnitude.y;
+            return this;
+        },
+        Divide: function(Magnitude) {
+            if (!isNaN(Magnitude))
+                Magnitude = new Vec2(Magnitude);
+
+            this.x /= Magnitude.x;
+            this.y /= Magnitude.y;
+            return this;
+        },
+        Normalize: function() {
+            return this.Divide(this.Length());
+        },
+        Normalized: function() {
+            var l = this.Length();
+            return new Vec2(this.x / l, this.y / l);
+        },
+        Dot: function(Vec) {
+            return (this.x * Vec.x) + (this.y * Vec.y);
+        },
+        //Simulate cross product where Z components are zero
+        //Returns calculated Z value (X and Y both become 0)
+        Cross: function(Vec) {
+            return (x * Vec.y) - (Y * Vec.x);
+        },
+        Reflect: function(Normal) {
+            var dot2x = 2 * this.Dot(Normal);
+            this.x -= Normal.x * dot2x;
+            this.y -= Normal.y * dot2x;
+        },
+        Reflected: function(Normal) {
+            var dot2x = 2 * this.Dot(Normal);
+            return new Vec2(this.x - (Normal.x * dot2x), this.y - (Normal.y * dot2x));
+        },
+        ToAngle: function() {
+            return Math.atan2(this.y, this.x);
+        },
+        Flip: function() {
+            var z = this.x;
+            this.x = -this.y;
+            this.y = z;
+        },
+        Flipped: function() {
+            return new Vec2(-this.y, this.x);
+        }
+    };
+    Vec2.Zero = new Vec2(0, 0);
+    Vec2.One = new Vec2(1, 1);
+    Vec2.Up = new Vec2(0, -1);
+    Vec2.Down = new Vec2(0, 1);
+    Vec2.Left = new Vec2(-1, 0);
+    Vec2.Right = new Vec2(1, 0);
+
+    Vec2[Symbol.iterator] = function*() {
+        yield this.x;
+        yield this.y;
+    };
+    Vec2.Add = function(A, B) {
+        if (!isNaN(B))
+            B = new Vec2(B);
+        return new Vec2(A.x + B.x, A.y + B.y);
+    };
+    Vec2.Subtract = function(A, B) {
+        if (!isNaN(B))
+            B = new Vec2(B);
+        return new Vec2(A.x - B.x, A.y - B.y);
+    };
+    Vec2.Multiply = function(A, B) {
+        if (!isNaN(B))
+            B = new Vec2(B);
+        return new Vec2(A.x * B.x, A.y * B.y);
+    };
+    Vec2.Divide = function(A, B) {
+        if (!isNaN(B))
+            B = new Vec2(B);
+        return new Vec2(A.x / B.x, A.y / B.y);
+    };
+    Vec2.Dot = function(A, B) {
+        return (A.x * B.x) + (A.y * B.y);
+    };
+    //Simulate cross product where Z components are zero
+    //Returns calculated Z value (X and Y both become 0)
+    Vec2.Cross = function(A, B) {
+        return (A.x * B.y) - (A.y * B.x);
+    };
+    Vec2.Reflect = function(Vec, Normal) {
+        var dot2x = 2 * Vec2.Dot(Vec, Normal);
+        return new Vec2(Vec.x - (Normal.x * dot2x), Vec.y - (Normal.y * dot2x));
+    };
+    Vec2.Distance = function(A, B) {
+        return Vec2.Subtract(B, A).Length();
+    };
+    Vec2.DistanceSq = function(A, B) {
+        return Vec2.Subtract(B, A).LengthSq();
+    };
+    Vec2.Lerp = function(A, B, T) {
+        return new Vec2(A.x + (T * (B.x - A.x)), A.y + (T * (B.y - A.y)));
+    };
+    Vec2.LerpPrecise = function(A, B, T) {
+        return new Vec2((1 - T) * A.x + (T * B.x), (1 - T) * A.y + (T * B.y));
+    };
+    Vec2.FromAngle = function(Radians) {
+        return new Vec2(Math.cos(Radians), Math.sin(Radians));
+    };
+
+    function Actor(Name, Pos, Dir) {
+        this.name = Name;
+        this.pos = Pos;
+        this.dir = Dir.Normalized();
+    };
+    Actor.prototype = {
+        fov: Math.PI * 0.666,
+
+        IsFacing: function(Point) {
+            var dot = this.dir.Dot(Vec2.Subtract(Point, this.pos).Normalize());
+            return (dot > (1 - (this.fov / Math.PI)));
+        },
+        IsBehind: function(Actor) {
+            var dot = Vec2.Dot(Vec2.Subtract(Actor.pos, this.pos).Normalize(), Actor.dir);
+            //console.log(dot, 0 - (Actor.fov / Math.PI));
+            return (dot > (Actor.fov / Math.PI) - 1);
+        },
+
+        Draw: function(Context, Color) {
+            Context.strokeStyle = Color;
+            Context.beginPath();
+            Context.arc(this.pos.x, this.pos.y, 20, 0, 2 * Math.PI);
+            Context.stroke();
+
+            var angle = this.dir.ToAngle();
+            var fov = this.fov / 2;
+            Context.beginPath();
+            Context.setLineDash([5, 5]);
+            //Context.moveTo(this.pos.x, this.pos.y);
+            Context.arc(this.pos.x, this.pos.y, 40, angle - fov, angle + fov);
+            //Context.closePath();
+            Context.stroke();
+            Context.setLineDash([]);
+
+            Context.beginPath();
+            Context.moveTo(this.pos.x, this.pos.y);
+            var v = Vec2.Add(this.pos, Vec2.Multiply(this.dir, 30));
+            Context.lineTo(v.x, v.y);
+            Context.stroke();
+
+            Context.font = "100 12px 'Source Sans Pro'";
+            Context.strokeText(this.name, this.pos.x - 22, this.pos.y - 22);
+        },
+    };
+
+    function Bullet(Pos, Dir, Speed, TargetActor) {
+        this.pos = Pos;
+        this.dir = Dir;
+        this.speed = Speed;
+        this.target = TargetActor;
+        this.turnRate = 0.25 * Math.PI;
+    }
+    Bullet.prototype = {
+        Draw: function(Context) {
+            if (this.target) {
+                var diff = Vec2.Subtract(this.target.pos, this.pos).Normalize();
+                this.dir = Vec2.Lerp(this.dir, diff, 0.05); //todo: should work based off of max angle
+
+                //stop tracking if overshot
+                var dot = this.dir.Dot(Vec2.Subtract(this.target.pos, this.pos).Normalize());
+                if (dot < 0)
+                    this.target = null;
+            }
+
+            Context.strokeStyle = '#f8c';
+            Context.beginPath();
+            var tail = Vec2.Subtract(this.pos, Vec2.Multiply(this.dir, this.speed * 2));
+            Context.arrow(tail, this.dir, this.speed * 3);
+            Context.stroke();
+        }
+    };
+
+    a = new Actor('a', new Vec2(300, 300), Vec2.Right);
+    b = new Actor('b', new Vec2(450, 300), Vec2.Down);
+    bullets = [];
+
+    var cvs = document.getElementById('c');
+    var info = document.getElementById('info');
+    var debug = document.getElementById('debug');
+
+    var cxt = cvs.getContext('2d');
+    var keys = new Array(255);
+    var mouse = {
+        pos: new Vec2(0),
+        pressed: false
+    };
+
+    cxt.arrow = function(tail, direction, length) {
+        this.moveTo(tail.x, tail.y);
+        var d = direction.Normalized();
+        var nose = Vec2.Add(tail, Vec2.Multiply(d, length));
+        this.lineTo(nose.x, nose.y);
+
+        var wc = Math.sqrt(3) / 2;
+        var ws = 1 / 2;
+        var wing = new Vec2(wc * d.x - ws * d.y, ws * d.x + wc * d.y);
+        wing.Multiply(length / 2);
+        this.lineTo(nose.x, nose.y);
+        var lw = Vec2.Subtract(nose, wing);
+        wing = new Vec2(wc * d.x + ws * d.y, -ws * d.x + wc * d.y);
+        wing.Multiply(length / 2);
+        var rw = Vec2.Subtract(nose, wing);
+        this.moveTo(lw.x, lw.y);
+        this.lineTo(nose.x, nose.y);
+        this.lineTo(rw.x, rw.y);
+    }
+    cxt.x = function(center, radius) {
+        this.moveTo(center.x - radius, center.y - radius);
+        this.lineTo(center.x + radius, center.y + radius);
+        this.moveTo(center.x - radius, center.y + radius);
+        this.lineTo(center.x + radius, center.y - radius);
+    }
+
+    var lastShot = 0;
+    (function Loop(Time) {
+        var speed = 5;
+        if (keys[65])
+            a.pos.x -= speed;
+        if (keys[87])
+            a.pos.y -= speed;
+        if (keys[68])
+            a.pos.x += speed;
+        if (keys[83])
+            a.pos.y += speed;
+        if (mouse.pressed && lastShot + 60 < Time) {
+            var target = null;
+            var diff = Vec2.Subtract(b.pos, a.pos).Normalize();
+            if (Vec2.Dot(diff, a.dir) > 0.75)
+                target = b;
+            bullets.push(new Bullet(a.pos.Clone(), a.dir.Clone(), 5, target));
+            lastShot = Time;
+        }
+
+        a.dir = Vec2.Subtract(mouse.pos, a.pos).Normalize();
+
+        cxt.clearRect(0, 0, cvs.width, cvs.height);
+        cxt.strokeStyle = '#aaa';
+        cxt.strokeRect(0, 0, cvs.width, cvs.height);
+
+        var splats = [];
+
+        for (var i in bullets)
+        {
+            var bullet = bullets[i];
+            bullet.pos.Add(Vec2.Multiply(bullet.dir, bullet.speed));
+            if ((bullet.target && bullet.pos.Within(bullet.target.pos, 10)) ||
+                bullet.pos.x < -bullet.speed || bullet.pos.x > cvs.width + bullet.speed ||
+                bullet.pos.y < -bullet.speed || bullet.pos.y > cvs.height + bullet.speed)
+            {
+                bullets.splice(i, 1);
+                splats.push(bullet.pos);
+            }
+            else
+                bullet.Draw(cxt);
+        }
+
+        var orbit = true;
+        if (orbit)
+        {
+            cxt.beginPath();
+            cxt.strokeStyle = 'red';
+            for (var i in splats)
+                cxt.x(splats[i], 4);
+            cxt.stroke();
+
+            var orbitRadius = 100;
+
+            cxt.beginPath();
+            cxt.strokeStyle = '#aaa';
+            cxt.setLineDash([2, 7]);
+            cxt.arc(a.pos.x, a.pos.y, orbitRadius, 0, 2 * Math.PI);
+            cxt.stroke();
+            cxt.setLineDash([]);
+
+            var diff = Vec2.Subtract(b.pos, a.pos);
+            var dl = diff.Length();
+            var rpos = Vec2.Add(a.pos, Vec2.Multiply(diff.Normalized(), orbitRadius));
+            var tangent = diff.Flipped();
+
+            cxt.beginPath();
+            cxt.strokeStyle = '#2d0';
+            cxt.arrow(rpos, diff.Negated(), 15);
+            cxt.stroke();
+            cxt.beginPath();
+            cxt.strokeStyle = '#d20';
+            cxt.arrow(rpos, tangent, 15);
+            cxt.stroke();
+
+            cxt.strokeStyle = '#aaa';
+            cxt.font = "100 12px 'Source Sans Pro'";
+            cxt.strokeText('r', rpos.x + 5, rpos.y + 5);
+
+            if (dl > orbitRadius)
+            {
+                var angleToTangent = Math.asin(orbitRadius / dl);
+                var relAngle = diff.Negated().ToAngle();
+                var det = -Vec2.Cross(b.dir, diff);
+
+                var desiredAngle = relAngle - (angleToTangent * Math.sign(det));
+                var desiredDir = Vec2.FromAngle(desiredAngle);
+
+                // console.log(angleToTangent, relAngle);
+                b.dir = desiredDir;
+            }
+            b.pos.Add(Vec2.Multiply(b.dir, 1 /* speed */));
+        }
+
+        a.Draw(cxt, '#0af');
+        b.Draw(cxt, '#fa0');
+
+        var detAToAB = Vec2.Cross(a.dir, Vec2.Subtract(b.pos, a.pos));
+
+        info.innerHTML = `A Facing B: ${a.IsFacing(b.pos)}<br>A Behind B:${a.IsBehind(b)}<br>`
+        + `A direction around B: ${detAToAB > 0 ? "cw" : "ccw"}`;
+
+        requestAnimationFrame(Loop);
+    })(0);
+
+    cvs.addEventListener('mousemove', function(ev) {
+        mouse.pos.x = ev.offsetX;
+        mouse.pos.y = ev.offsetY;
+    });
+    cvs.addEventListener('mousedown', function(ev) {
+        mouse.pressed = true;
+    });
+    cvs.addEventListener('mouseup', function(ev) {
+        mouse.pressed = false;
+    });
+
+    window.addEventListener('keydown', function(ev) {
+        keys[ev.which] = true;
+    });
+
+    window.addEventListener('keyup', function(ev) {
+        keys[ev.which] = false;
+    });
+</script>
+</html>

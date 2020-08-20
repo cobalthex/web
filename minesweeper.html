@@ -1,0 +1,340 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset='utf-8'>
+        <title>Minesweeper</title>
+        <style>
+            html,body {
+                background: #223;
+                font-family: sans-serif;
+                text-align: center;
+            }
+
+            main {
+                margin-top: 100px;
+                text-align: center;
+                display: inline-block;
+                margin: 100px auto;
+            }
+
+            #restart {
+                padding: 10px 20px;
+                display: block;
+
+                border: 3px solid #0af;
+                border-radius: 10px;
+                background: transparent;
+                color: #0af;
+                font-size: 200%;
+                font-weight: bold;
+                text-decoration: none;
+                transition: 0.5s all;
+            }
+            #restart:hover {
+                color: #cff;
+                border-color: #cff;
+                box-shadow: 0 0 10px rgba(96, 255, 192, 0.6), inset 0 0 10px rgba(96, 255, 192, 0.6);
+            }
+            #restart:active {
+                transition: none;
+                color: #0a6;
+                border-color: #0a8;
+                box-shadow: 0 0 10px rgba(0, 5, 10, 1), inset 0 0 20px rgba(0, 5, 10, 0.5);
+            }
+
+            #minesweeper {
+                display: inline-block;
+
+                border-radius: 10px;
+                border: 3px solid #66d;
+                padding: 5px;
+                margin: 50px auto;
+                user-select: none;
+                overflow: hidden;
+            }
+
+            .tile {
+                cursor: pointer;
+                display: inline-block;
+                margin: 2px;
+                width: 2em;
+                height: 2em;
+                line-height: 2em;
+                position: relative;
+
+                vertical-align: top;
+                text-align: center;
+                color: #eef;
+                font-weight: bold;
+                user-select: none;
+
+                border-radius: 5px;
+                border: 3px solid #0af;
+                transition: 0.5s all;
+            }
+            .tile::before {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+            }
+            .tile:hover {
+                border-color: #adf;
+                box-shadow: 0 0 10px rgba(96, 128, 255, 0.6), inset 0 0 10px rgba(96, 128, 255, 0.6);
+
+            }
+            .tile:active {
+                transition: none;
+                border-color: #07a;
+                box-shadow: 0 0 10px rgba(0, 5, 10, 1), inset 0 0 10px rgba(0, 5, 10, 0.5);
+            }
+            .tile.mine-debug {
+                border-color: #fa8;
+            }
+            .tile.mine, .tile.known {
+                cursor: initial;
+                border-color: #458;
+                box-shadow: none;
+            }
+            .tile.flag::before {
+                content: '🚩';
+            }
+            .tile.known::before {
+                content: attr(data-nearby);
+            }
+            .tile.flag.known::before {
+                content: attr(data-nearby number, '🏳')
+            }
+            .tile.mine::before {
+                content: '💣';
+            }
+            .tile.mine.flag::before {
+                content: '🏴‍☠️';
+            }
+            .tile.fail {
+                cursor: initial;
+                border-color: #d40;
+            }
+            .tile.win {
+                cursor: initial;
+                border-color: #4d0;
+            }
+
+            .hint {
+                color: #adf;
+                opacity: 0.5;
+                font-style: oblique;
+                font-size: 80%;
+                margin: 10px auto;
+
+            }
+        </style>
+        </head>
+    <body>
+        <main>
+            <!-- todo: reset/resize buttons -->
+            <div><a href='' id='restart'>Restart</a></div>
+            <div id='minesweeper'></div>
+            <div class="hint">Right click a tile to flag it</div>
+        </main>
+    </body>
+
+<script>
+    const default_grid_size = 9;
+    
+    document.getElementById('restart').addEventListener('click', function(ev)
+    {
+        Minesweeper(default_grid_size);
+        ev.preventDefault();
+    });
+    
+    function Minesweeper(size, debug)
+    {
+        const TILE_EMPTY_UNREVEALED = 0;
+        const TILE_EMPTY_REVEALED = 1;
+        const TILE_MINE = 2;
+
+        function Coord(row, col)
+        {
+            this.row = parseInt(row);
+            this.col = parseInt(col);
+
+            this.plus = function(coord)
+            {
+                return new Coord(this.row + coord.row, this.col + coord.col);
+            }
+        }
+
+        if (!isNaN(size))
+            size = new Coord(size, size);
+
+        // setup board
+        var board = new Uint8Array(size.row * size.col);
+        board.fill(TILE_EMPTY_UNREVEALED);
+
+        var minePercent = 0.15; //random number * ?
+        var mineCount = Math.trunc(minePercent * board.length);
+
+        for (var i = 0; i < mineCount; ++i)
+        {
+            var r = Math.trunc(Math.random() * Math.floor(size.row));
+            var c = Math.trunc(Math.random() * Math.floor(size.col));
+            board[r * size.col + c] = TILE_MINE;
+        }
+        var tilesRemaining = size.row * size.col - mineCount;
+        debug && console.log("mines", mineCount, "blank", tilesRemaining);
+
+        var Get$Tile = function(coord)
+        {
+            var i = coord.row * size.col + coord.col;
+            return $board.children[i + Math.trunc(i / size.row)];
+        };
+
+        var EndGame = function(didWin)
+        {
+            for (var i = 0; i < board.length; ++i)
+            {
+                var tile = board[i];
+                var $tile = $board.children[i + Math.trunc(i / size.row)];
+                switch (tile)
+                {
+                case TILE_MINE:
+                    $tile.classList.add('mine', didWin ? 'win' : 'fail');
+                    break;
+                case TILE_EMPTY_UNREVEALED:
+                    board[i] = TILE_EMPTY_REVEALED;
+                    $tile.classList.add('known');
+                }
+            }
+        }
+
+
+        const dirs = [new Coord(-1, -1), new Coord(0, -1), new Coord(1, -1),
+        new Coord(-1, 0),                    new Coord(1, 0),
+        new Coord(-1, 1),  new Coord(0, 1),  new Coord(1, 1)];
+
+        var Fill = function(start)
+        {
+            var queue = [start];
+            while (queue.length > 0)
+            {
+                var front = queue.shift();
+                if (board[front.row * size.col + front.col] != TILE_EMPTY_UNREVEALED)
+                    continue;
+
+                var nearby = 0;
+                for (var dir in dirs)
+                {
+                    var spot = front.plus(dirs[dir]);
+                    if (spot.row < 0 || spot.row >= size.row ||
+                        spot.col < 0 || spot.col >= size.col)
+                        continue;
+
+                    if (board[spot.row * size.col + spot.col] == TILE_MINE)
+                        ++nearby;
+                }
+
+                board[front.row * size.col + front.col] = TILE_EMPTY_REVEALED;
+                var $tile = Get$Tile(front);
+                $tile.classList.add('known');
+
+                if (--tilesRemaining <= 0)
+                {
+                    EndGame(true);
+                    return;
+                }
+                debug && console.log(tilesRemaining);
+
+                if (nearby > 0)
+                    $tile.dataset.nearby = nearby;
+                else
+                {
+
+                    for (var dir in dirs)
+                    {
+                        var spot = front.plus(dirs[dir]);
+                        if (spot.row < 0 || spot.row >= size.row ||
+                            spot.col < 0 || spot.col >= size.col)
+                            continue;
+
+                        if (board[spot.row * size.col + spot.col] == TILE_EMPTY_UNREVEALED)
+                            queue.push(spot);
+                    }
+                }
+            }
+        };
+
+        var Sweep = function(coord)
+        {
+            var isFirst = (tilesRemaining == size.row * size.col - mineCount);
+            switch (board[coord.row * size.col + coord.col])
+            {
+                case TILE_MINE:
+                if (isFirst)
+                {
+                    var r = Math.trunc(Math.random() * Math.floor(size.row));
+                    var c = Math.trunc(Math.random() * Math.floor(size.col));
+                    if (board[r * size.col + c] == TILE_MINE)
+                    {
+                        --mineCount;
+                        ++tilesRemaining;
+                    }
+                    else
+                        board[r * size.col + c] = TILE_MINE;
+                    board[coord.row * size.col + coord.col] = TILE_EMPTY_UNREVEALED;
+                    Fill(coord);
+                }
+                else
+                    EndGame(false);
+                break;
+
+                case TILE_EMPTY_UNREVEALED:
+                Fill(coord);
+                break;
+            }
+        };
+
+        var $board = document.createDocumentFragment();
+        $board = $board.appendChild(document.createElement('div'));
+        $board.id = 'minesweeper';
+        $board.addEventListener('contextmenu', function(ev)
+        {
+           ev.preventDefault(); 
+        });
+
+        for (var r = 0; r < size.row; ++r)
+        {
+            for (var c = 0; c < size.col; ++c)
+            {
+                var $tile = document.createElement('div');
+                $tile.classList.add('tile');
+                $tile.dataset.row = r;
+                $tile.dataset.column = c;
+                $tile.addEventListener('contextmenu', function(ev)
+                {
+                    Get$Tile(new Coord(ev.target.dataset.row, ev.target.dataset.column)).classList.toggle('flag');
+                    ev.preventDefault();
+                });
+                $tile.addEventListener('click', function(ev)
+                {
+                    Sweep(new Coord(ev.target.dataset.row, ev.target.dataset.column));
+                    ev.preventDefault();
+                });
+                $board.appendChild($tile);
+                
+                if (debug && board[r * size.col + c] == TILE_MINE)
+                    $tile.classList.add('mine-debug');
+            }
+            $board.appendChild(document.createElement('br'));
+        }
+
+        var $dom = document.getElementById('minesweeper');
+        if ($dom)
+            $dom.replaceWith($board);
+        else
+            document.body.appendChild($board);
+    }
+    Minesweeper(default_grid_size);
+</script>
+</html>
