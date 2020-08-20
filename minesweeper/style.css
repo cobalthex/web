@@ -1,0 +1,126 @@
+
+html,body {
+    background: #223;
+    font-family: sans-serif;
+    text-align: center;
+}
+
+main {
+    margin-top: 100px;
+    text-align: center;
+    display: inline-block;
+    margin: 100px auto;
+}
+
+#restart {
+    padding: 10px 20px;
+    display: block;
+
+    border: 3px solid #0af;
+    border-radius: 10px;
+    background: transparent;
+    color: #0af;
+    font-size: 200%;
+    font-weight: bold;
+    text-decoration: none;
+    transition: 0.5s all;
+}
+#restart:hover {
+    color: #cff;
+    border-color: #cff;
+    box-shadow: 0 0 10px rgba(96, 255, 192, 0.6), inset 0 0 10px rgba(96, 255, 192, 0.6);
+}
+#restart:active {
+    transition: none;
+    color: #0a6;
+    border-color: #0a8;
+    box-shadow: 0 0 10px rgba(0, 5, 10, 1), inset 0 0 20px rgba(0, 5, 10, 0.5);
+}
+
+#minesweeper {
+    display: inline-block;
+
+    border-radius: 10px;
+    border: 3px solid #66d;
+    padding: 5px;
+    margin: 50px auto;
+    user-select: none;
+    overflow: hidden;
+}
+
+.tile {
+    cursor: pointer;
+    display: inline-block;
+    margin: 2px;
+    width: 2em;
+    height: 2em;
+    line-height: 2em;
+    position: relative;
+
+    vertical-align: top;
+    text-align: center;
+    color: #eef;
+    font-weight: bold;
+    user-select: none;
+
+    border-radius: 5px;
+    border: 3px solid #0af;
+    transition: 0.5s all;
+}
+.tile::before {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+.tile:hover {
+    border-color: #adf;
+    box-shadow: 0 0 10px rgba(96, 128, 255, 0.6), inset 0 0 10px rgba(96, 128, 255, 0.6);
+
+}
+.tile:active {
+    transition: none;
+    border-color: #07a;
+    box-shadow: 0 0 10px rgba(0, 5, 10, 1), inset 0 0 10px rgba(0, 5, 10, 0.5);
+}
+.tile.mine-debug {
+    border-color: #fa8;
+}
+.tile.mine, .tile.known {
+    cursor: initial;
+    border-color: #458;
+    box-shadow: none;
+}
+.tile.flag::before {
+    content: '🚩';
+}
+.tile.known::before {
+    content: attr(data-nearby);
+}
+.tile.flag.known::before {
+    content: attr(data-nearby number, '🏳')
+}
+.tile.mine::before {
+    content: '💣';
+}
+.tile.mine.flag::before {
+    content: '🏴‍☠️';
+}
+.tile.fail {
+    cursor: initial;
+    border-color: #d40;
+}
+.tile.win {
+    cursor: initial;
+    border-color: #4d0;
+}
+
+.hint {
+    color: #adf;
+    opacity: 0.5;
+    font-style: oblique;
+    font-size: 80%;
+    margin: 10px auto;
+
+}

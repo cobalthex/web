@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset='utf-8'>
+        <title>Minesweeper</title>
+        <link rel="stylesheet" href="style.css">
+        </head>
+    <body>
+        <main>
+            <!-- todo: reset/resize buttons -->
+            <div><a href='' id='restart'>Restart</a></div>
+            <div id='minesweeper'></div>
+            <div class="hint">Right click a tile to flag it</div>
+        </main>
+    </body>
+
+<script src="minesweeper.js"></script>
+<script>
+    const default_grid_size = 9;
+    Minesweeper(default_grid_size);
+
+    document.getElementById('restart').addEventListener('click', function(ev)
+    {
+        Minesweeper(default_grid_size);
+        ev.preventDefault();
+    });
+</script>
+</html>

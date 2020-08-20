@@ -1,0 +1,19 @@
+html,body {
+    background: #223;
+    color: #dde;
+    font-family: sans-serif;
+    text-align: center;
+}
+main {
+    margin: auto;
+    padding: 20;
+    overflow: hidden;
+}
+canvas {
+    cursor: default;
+    -webkit-user-select: none;
+    user-select: none;
+}
+#debug {
+    font-family: monospace;
+}
